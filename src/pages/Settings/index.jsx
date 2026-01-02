@@ -1,0 +1,13 @@
+import { Typography } from '@mui/material';
+
+const Settings = () => {
+  return (
+    <div>
+      <Typography variant="h4" gutterBottom>
+        Settings
+      </Typography>
+    </div>
+  );
+};
+
+export default Settings;
