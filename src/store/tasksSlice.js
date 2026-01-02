@@ -1,140 +1,158 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import * as taskService from '../services/taskService';
 
 /**
- * @typedef {Object} Task
- * @property {string} id - Unique identifier
- * @property {string} title - Task title
- * @property {string} description - Task description
- * @property {'active' | 'completed'} status - Task status
- * @property {'low' | 'medium' | 'high'} priority - Task priority
- * @property {string} category - Category ID
- * @property {string} dueDate - Due date in ISO format
- * @property {string} createdAt - Creation timestamp in ISO format
- * @property {string} updatedAt - Last update timestamp in ISO format
+ * Async thunks for task operations
  */
 
-/**
- * @typedef {Object} TasksState
- * @property {Task[]} items - Array of tasks
- * @property {boolean} isLoading - Loading state for async operations
- * @property {string|null} error - Error message if any
- * @property {Object} filters - Current active filters
- * @property {string} filters.status - Filter by status
- * @property {string} filters.priority - Filter by priority
- * @property {string} filters.category - Filter by category
- * @property {string} filters.search - Search query
- * @property {string} sortBy - Current sort field
- * @property {string} sortOrder - Current sort order ('asc' | 'desc')
- */
-
-/** @type {TasksState} */
-const initialState = {
-  items: [],
-  isLoading: false,
-  error: null,
-  filters: {
-    status: 'all',
-    priority: 'all',
-    category: 'all',
-    search: '',
-  },
-  sortBy: 'createdAt',
-  sortOrder: 'desc',
-};
-
-// Async Thunks
+// Fetch all tasks
 export const fetchTasks = createAsyncThunk(
   'tasks/fetchTasks',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await taskService.getAllTasks();
-      return response.data;
+      const response = await fetch('/api/tasks');
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
+      }
+      const data = await response.json();
+      return data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to fetch tasks'
-      );
+      return rejectWithValue(error.message);
     }
   }
 );
 
+// Create a new task
 export const createTask = createAsyncThunk(
   'tasks/createTask',
   async (taskData, { rejectWithValue }) => {
     try {
-      const response = await taskService.createTask(taskData);
-      return response.data;
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to create task');
+      }
+      const data = await response.json();
+      return data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to create task'
-      );
+      return rejectWithValue(error.message);
     }
   }
 );
 
+// Update an existing task
 export const updateTask = createAsyncThunk(
   'tasks/updateTask',
-  async ({ id, taskData }, { rejectWithValue }) => {
+  async ({ id, ...taskData }, { rejectWithValue }) => {
     try {
-      const response = await taskService.updateTask(id, taskData);
-      return response.data;
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update task');
+      }
+      const data = await response.json();
+      return data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to update task'
-      );
+      return rejectWithValue(error.message);
     }
   }
 );
 
+// Delete a task
 export const deleteTask = createAsyncThunk(
   'tasks/deleteTask',
   async (taskId, { rejectWithValue }) => {
     try {
-      await taskService.deleteTask(taskId);
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete task');
+      }
       return taskId;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to delete task'
-      );
+      return rejectWithValue(error.message);
     }
   }
 );
 
+// Toggle task status
 export const toggleTaskStatus = createAsyncThunk(
   'tasks/toggleTaskStatus',
   async (taskId, { getState, rejectWithValue }) => {
     try {
       const task = getState().tasks.items.find((t) => t.id === taskId);
-      if (!task) {
-        throw new Error('Task not found');
-      }
       const newStatus = task.status === 'active' ? 'completed' : 'active';
-      const response = await taskService.updateTask(taskId, { status: newStatus });
-      return response.data;
+      
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update task status');
+      }
+      const data = await response.json();
+      return data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to toggle task status'
-      );
+      return rejectWithValue(error.message);
     }
   }
 );
 
-// Slice
 const tasksSlice = createSlice({
   name: 'tasks',
-  initialState,
+  initialState: {
+    items: [],
+    loading: false,
+    error: null,
+    filter: {
+      status: 'all', // 'all', 'active', 'completed'
+      priority: 'all', // 'all', 'low', 'medium', 'high'
+      category: 'all', // 'all' or category id
+    },
+    sortBy: 'dueDate', // 'dueDate', 'priority', 'createdAt', 'title'
+    sortOrder: 'asc', // 'asc', 'desc'
+    searchQuery: '',
+  },
   reducers: {
-    setFilter: (state, action) => {
-      const { filterType, value } = action.payload;
-      state.filters[filterType] = value;
+    // Local state management for filters
+    setStatusFilter: (state, action) => {
+      state.filter.status = action.payload;
+    },
+    setPriorityFilter: (state, action) => {
+      state.filter.priority = action.payload;
+    },
+    setCategoryFilter: (state, action) => {
+      state.filter.category = action.payload;
+    },
+    setSortBy: (state, action) => {
+      state.sortBy = action.payload;
+    },
+    setSortOrder: (state, action) => {
+      state.sortOrder = action.payload;
+    },
+    setSearchQuery: (state, action) => {
+      state.searchQuery = action.payload;
     },
     clearFilters: (state) => {
-      state.filters = initialState.filters;
-    },
-    setSort: (state, action) => {
-      const { sortBy, sortOrder } = action.payload;
-      state.sortBy = sortBy;
-      state.sortOrder = sortOrder;
+      state.filter = {
+        status: 'all',
+        priority: 'all',
+        category: 'all',
+      };
+      state.searchQuery = '';
     },
     clearError: (state) => {
       state.error = null;
@@ -144,85 +162,81 @@ const tasksSlice = createSlice({
     // Fetch tasks
     builder
       .addCase(fetchTasks.pending, (state) => {
-        state.isLoading = true;
+        state.loading = true;
         state.error = null;
       })
       .addCase(fetchTasks.fulfilled, (state, action) => {
-        state.isLoading = false;
+        state.loading = false;
         state.items = action.payload;
       })
       .addCase(fetchTasks.rejected, (state, action) => {
-        state.isLoading = false;
+        state.loading = false;
         state.error = action.payload;
       });
 
     // Create task
     builder
       .addCase(createTask.pending, (state) => {
-        state.isLoading = true;
+        state.loading = true;
         state.error = null;
       })
       .addCase(createTask.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.items.unshift(action.payload);
+        state.loading = false;
+        state.items.push(action.payload);
       })
       .addCase(createTask.rejected, (state, action) => {
-        state.isLoading = false;
+        state.loading = false;
         state.error = action.payload;
       });
 
     // Update task
     builder
       .addCase(updateTask.pending, (state) => {
-        state.isLoading = true;
+        state.loading = true;
         state.error = null;
       })
       .addCase(updateTask.fulfilled, (state, action) => {
-        state.isLoading = false;
-        const index = state.items.findIndex(
-          (task) => task.id === action.payload.id
-        );
+        state.loading = false;
+        const index = state.items.findIndex((t) => t.id === action.payload.id);
         if (index !== -1) {
           state.items[index] = action.payload;
         }
       })
       .addCase(updateTask.rejected, (state, action) => {
-        state.isLoading = false;
+        state.loading = false;
         state.error = action.payload;
       });
 
     // Delete task
     builder
       .addCase(deleteTask.pending, (state) => {
-        state.isLoading = true;
+        state.loading = true;
         state.error = null;
       })
       .addCase(deleteTask.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.items = state.items.filter((task) => task.id !== action.payload);
+        state.loading = false;
+        state.items = state.items.filter((t) => t.id !== action.payload);
       })
       .addCase(deleteTask.rejected, (state, action) => {
-        state.isLoading = false;
+        state.loading = false;
         state.error = action.payload;
       });
 
     // Toggle task status
     builder
       .addCase(toggleTaskStatus.pending, (state) => {
-        state.isLoading = true;
+        state.loading = true;
         state.error = null;
       })
       .addCase(toggleTaskStatus.fulfilled, (state, action) => {
-        state.isLoading = false;
-        const index = state.items.findIndex(
-          (task) => task.id === action.payload.id
-        );
+        state.loading = false;
+        const index = state.items.findIndex((t) => t.id === action.payload.id);
         if (index !== -1) {
           state.items[index] = action.payload;
         }
       })
       .addCase(toggleTaskStatus.rejected, (state, action) => {
-        state.isLoading = false;
+        state.loading = false;
         state.error = action.payload;
       });
   },
@@ -230,75 +244,76 @@ const tasksSlice = createSlice({
 
 // Selectors
 export const selectAllTasks = (state) => state.tasks.items;
-export const selectTasksLoading = (state) => state.tasks.isLoading;
+export const selectTasksLoading = (state) => state.tasks.loading;
 export const selectTasksError = (state) => state.tasks.error;
-export const selectTasksFilters = (state) => state.tasks.filters;
-export const selectTasksSort = (state) => ({
-  sortBy: state.tasks.sortBy,
-  sortOrder: state.tasks.sortOrder,
-});
+export const selectTasksFilter = (state) => state.tasks.filter;
+export const selectTasksSortBy = (state) => state.tasks.sortBy;
+export const selectTasksSortOrder = (state) => state.tasks.sortOrder;
+export const selectSearchQuery = (state) => state.tasks.searchQuery;
 
+// Computed selector for filtered and sorted tasks
 export const selectFilteredTasks = (state) => {
-  const { items, filters, sortBy, sortOrder } = state.tasks;
-  let filtered = [...items];
+  let tasks = [...state.tasks.items];
+  const { status, priority, category } = state.tasks.filter;
+  const searchQuery = state.tasks.searchQuery.toLowerCase();
+  const sortBy = state.tasks.sortBy;
+  const sortOrder = state.tasks.sortOrder;
 
   // Apply filters
-  if (filters.status !== 'all') {
-    filtered = filtered.filter((task) => task.status === filters.status);
+  if (status !== 'all') {
+    tasks = tasks.filter((t) => t.status === status);
   }
-  if (filters.priority !== 'all') {
-    filtered = filtered.filter((task) => task.priority === filters.priority);
+  if (priority !== 'all') {
+    tasks = tasks.filter((t) => t.priority === priority);
   }
-  if (filters.category !== 'all') {
-    filtered = filtered.filter((task) => task.category === filters.category);
+  if (category !== 'all') {
+    tasks = tasks.filter((t) => t.category === category);
   }
-  if (filters.search) {
-    const searchLower = filters.search.toLowerCase();
-    filtered = filtered.filter(
-      (task) =>
-        task.title.toLowerCase().includes(searchLower) ||
-        task.description.toLowerCase().includes(searchLower)
+  if (searchQuery) {
+    tasks = tasks.filter(
+      (t) =>
+        t.title.toLowerCase().includes(searchQuery) ||
+        t.description?.toLowerCase().includes(searchQuery)
     );
   }
 
   // Apply sorting
-  filtered.sort((a, b) => {
-    let aValue = a[sortBy];
-    let bValue = b[sortBy];
-
-    // Handle date comparisons
-    if (sortBy === 'dueDate' || sortBy === 'createdAt' || sortBy === 'updatedAt') {
-      aValue = new Date(aValue).getTime();
-      bValue = new Date(bValue).getTime();
+  tasks.sort((a, b) => {
+    let compareValue = 0;
+    
+    switch (sortBy) {
+      case 'dueDate':
+        compareValue = new Date(a.dueDate) - new Date(b.dueDate);
+        break;
+      case 'priority':
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        compareValue = priorityOrder[a.priority] - priorityOrder[b.priority];
+        break;
+      case 'createdAt':
+        compareValue = new Date(a.createdAt) - new Date(b.createdAt);
+        break;
+      case 'title':
+        compareValue = a.title.localeCompare(b.title);
+        break;
+      default:
+        return 0;
     }
-
-    // Handle priority comparisons
-    if (sortBy === 'priority') {
-      const priorityOrder = { low: 1, medium: 2, high: 3 };
-      aValue = priorityOrder[aValue] || 0;
-      bValue = priorityOrder[bValue] || 0;
-    }
-
-    if (sortOrder === 'asc') {
-      return aValue > bValue ? 1 : -1;
-    } else {
-      return aValue < bValue ? 1 : -1;
-    }
+    
+    return sortOrder === 'asc' ? compareValue : -compareValue;
   });
 
-  return filtered;
+  return tasks;
 };
 
-export const selectTaskById = (state, taskId) =>
-  state.tasks.items.find((task) => task.id === taskId);
-
-export const selectActiveTasksCount = (state) =>
-  state.tasks.items.filter((task) => task.status === 'active').length;
-
-export const selectCompletedTasksCount = (state) =>
-  state.tasks.items.filter((task) => task.status === 'completed').length;
-
-// Actions
-export const { setFilter, clearFilters, setSort, clearError } = tasksSlice.actions;
+export const {
+  setStatusFilter,
+  setPriorityFilter,
+  setCategoryFilter,
+  setSortBy,
+  setSortOrder,
+  setSearchQuery,
+  clearFilters,
+  clearError,
+} = tasksSlice.actions;
 
 export default tasksSlice.reducer;

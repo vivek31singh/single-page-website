@@ -11,189 +11,202 @@ import { createSlice } from '@reduxjs/toolkit';
 /**
  * @typedef {Object} Modal
  * @property {string} type - Modal type identifier
- * @property {boolean} isOpen - Whether the modal is open
- * @property {Object} data - Additional data for the modal
+ * @property {boolean} isOpen - Whether the modal is currently open
+ * @property {Object} data - Additional data passed to the modal
  */
 
-/**
- * @typedef {Object} UIState
- * @property {boolean} isLoading - Global loading state
- * @property {Notification[]} notifications - Array of active notifications
- * @property {Object} modals - Active modals keyed by type
- * @property {string} activeSidebarTab - Currently active sidebar tab
- * @property {boolean} isSidebarOpen - Sidebar open state for mobile
- * @property {boolean} isDarkMode - Dark mode preference
- */
-
-/** @type {UIState} */
-const initialState = {
-  isLoading: false,
-  notifications: [],
-  modals: {
-    deleteConfirmation: {
-      isOpen: false,
-      data: null,
-    },
-    editTask: {
-      isOpen: false,
-      data: null,
-    },
-    createTask: {
-      isOpen: false,
-      data: null,
-    },
-    createCategory: {
-      isOpen: false,
-      data: null,
-    },
-  },
-  activeSidebarTab: 'tasks',
-  isSidebarOpen: true,
-  isDarkMode: false,
-};
-
-// Slice
 const uiSlice = createSlice({
   name: 'ui',
-  initialState,
+  initialState: {
+    // Notifications state
+    notifications: [],
+    
+    // Modal state
+    modal: {
+      type: null,
+      isOpen: false,
+      data: null,
+    },
+    
+    // Global loading state
+    isLoading: false,
+    loadingMessage: '',
+    
+    // Theme state (for potential dark mode)
+    theme: 'light',
+    
+    // Sidebar state for mobile responsiveness
+    isSidebarOpen: true,
+    
+    // Confirmation dialog state
+    confirmation: {
+      isOpen: false,
+      title: '',
+      message: '',
+      onConfirm: null,
+      onCancel: null,
+    },
+  },
   reducers: {
-    // Loading state
-    setLoading: (state, action) => {
-      state.isLoading = action.payload;
+    // Notification actions
+    addNotification: (state, action) => {
+      const notification = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        type: 'info',
+        duration: 5000,
+        ...action.payload,
+      };
+      state.notifications.push(notification);
     },
-
-    // Notifications
-    showNotification: (state, action) => {
-      const { type, message, duration = 5000 } = action.payload;
-      const id = Date.now().toString();
-      state.notifications.push({ id, type, message, duration });
-    },
-    hideNotification: (state, action) => {
+    removeNotification: (state, action) => {
       state.notifications = state.notifications.filter(
-        (notification) => notification.id !== action.payload
+        (n) => n.id !== action.payload
       );
     },
     clearNotifications: (state) => {
       state.notifications = [];
     },
-
-    // Modals
+    
+    // Convenience actions for specific notification types
+    showSuccess: (state, action) => {
+      const notification = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        type: 'success',
+        message: action.payload,
+        duration: 3000,
+      };
+      state.notifications.push(notification);
+    },
+    showError: (state, action) => {
+      const notification = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        type: 'error',
+        message: action.payload,
+        duration: 5000,
+      };
+      state.notifications.push(notification);
+    },
+    showWarning: (state, action) => {
+      const notification = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        type: 'warning',
+        message: action.payload,
+        duration: 4000,
+      };
+      state.notifications.push(notification);
+    },
+    showInfo: (state, action) => {
+      const notification = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        type: 'info',
+        message: action.payload,
+        duration: 3000,
+      };
+      state.notifications.push(notification);
+    },
+    
+    // Modal actions
     openModal: (state, action) => {
-      const { type, data = null } = action.payload;
-      if (state.modals[type]) {
-        state.modals[type].isOpen = true;
-        state.modals[type].data = data;
-      }
+      state.modal = {
+        type: action.payload.type,
+        isOpen: true,
+        data: action.payload.data || null,
+      };
     },
-    closeModal: (state, action) => {
-      const type = action.payload;
-      if (state.modals[type]) {
-        state.modals[type].isOpen = false;
-        state.modals[type].data = null;
-      }
+    closeModal: (state) => {
+      state.modal = {
+        type: null,
+        isOpen: false,
+        data: null,
+      };
     },
-    closeAllModals: (state) => {
-      Object.keys(state.modals).forEach((type) => {
-        state.modals[type].isOpen = false;
-        state.modals[type].data = null;
-      });
+    
+    // Loading actions
+    setLoading: (state, action) => {
+      state.isLoading = action.payload;
+      state.loadingMessage = '';
     },
-
-    // Sidebar
-    setActiveSidebarTab: (state, action) => {
-      state.activeSidebarTab = action.payload;
+    setLoadingWithMessage: (state, action) => {
+      state.isLoading = true;
+      state.loadingMessage = action.payload;
     },
+    clearLoading: (state) => {
+      state.isLoading = false;
+      state.loadingMessage = '';
+    },
+    
+    // Theme actions
+    setTheme: (state, action) => {
+      state.theme = action.payload;
+    },
+    toggleTheme: (state) => {
+      state.theme = state.theme === 'light' ? 'dark' : 'light';
+    },
+    
+    // Sidebar actions
     toggleSidebar: (state) => {
       state.isSidebarOpen = !state.isSidebarOpen;
     },
     setSidebarOpen: (state, action) => {
       state.isSidebarOpen = action.payload;
     },
-
-    // Dark mode
-    toggleDarkMode: (state) => {
-      state.isDarkMode = !state.isDarkMode;
-      // Apply dark mode to document
-      if (typeof document !== 'undefined') {
-        document.documentElement.classList.toggle(
-          'dark',
-          state.isDarkMode
-        );
-      }
+    
+    // Confirmation dialog actions
+    showConfirmation: (state, action) => {
+      state.confirmation = {
+        isOpen: true,
+        title: action.payload.title || 'Confirm',
+        message: action.payload.message || 'Are you sure?',
+        onConfirm: action.payload.onConfirm || null,
+        onCancel: action.payload.onCancel || null,
+      };
     },
-    setDarkMode: (state, action) => {
-      state.isDarkMode = action.payload;
-      // Apply dark mode to document
-      if (typeof document !== 'undefined') {
-        document.documentElement.classList.toggle(
-          'dark',
-          state.isDarkMode
-        );
-      }
+    hideConfirmation: (state) => {
+      state.confirmation = {
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+        onCancel: null,
+      };
     },
   },
 });
 
 // Selectors
-export const selectIsLoading = (state) => state.ui.isLoading;
 export const selectNotifications = (state) => state.ui.notifications;
-export const selectModals = (state) => state.ui.modals;
-export const selectModalByType = (state, modalType) =>
-  state.ui.modals[modalType] || { isOpen: false, data: null };
-export const selectActiveSidebarTab = (state) => state.ui.activeSidebarTab;
+export const selectModal = (state) => state.ui.modal;
+export const selectIsLoading = (state) => state.ui.isLoading;
+export const selectLoadingMessage = (state) => state.ui.loadingMessage;
+export const selectTheme = (state) => state.ui.theme;
 export const selectIsSidebarOpen = (state) => state.ui.isSidebarOpen;
-export const selectIsDarkMode = (state) => state.ui.isDarkMode;
+export const selectConfirmation = (state) => state.ui.confirmation;
 
-// Helper selectors for common modal checks
-export const selectIsDeleteModalOpen = (state) =>
-  state.ui.modals.deleteConfirmation?.isOpen || false;
-export const selectIsEditTaskModalOpen = (state) =>
-  state.ui.modals.editTask?.isOpen || false;
-export const selectIsCreateTaskModalOpen = (state) =>
-  state.ui.modals.createTask?.isOpen || false;
-export const selectIsCreateCategoryModalOpen = (state) =>
-  state.ui.modals.createCategory?.isOpen || false;
+// Check if any modal is open
+export const selectIsModalOpen = (state) => state.ui.modal.isOpen;
 
-// Actions
+// Check if confirmation dialog is open
+export const selectIsConfirmationOpen = (state) => state.ui.confirmation.isOpen;
+
 export const {
-  setLoading,
-  showNotification,
-  hideNotification,
+  addNotification,
+  removeNotification,
   clearNotifications,
+  showSuccess,
+  showError,
+  showWarning,
+  showInfo,
   openModal,
   closeModal,
-  closeAllModals,
-  setActiveSidebarTab,
+  setLoading,
+  setLoadingWithMessage,
+  clearLoading,
+  setTheme,
+  toggleTheme,
   toggleSidebar,
   setSidebarOpen,
-  toggleDarkMode,
-  setDarkMode,
+  showConfirmation,
+  hideConfirmation,
 } = uiSlice.actions;
-
-// Thunk creators for common notification patterns
-export const showSuccessNotification = (message) =>
-  showNotification({ type: 'success', message });
-
-export const showErrorNotification = (message) =>
-  showNotification({ type: 'error', message, duration: 7000 });
-
-export const showWarningNotification = (message) =>
-  showNotification({ type: 'warning', message });
-
-export const showInfoNotification = (message) =>
-  showNotification({ type: 'info', message });
-
-// Modal convenience actions
-export const openDeleteModal = (data) =>
-  openModal({ type: 'deleteConfirmation', data });
-
-export const openEditTaskModal = (data) =>
-  openModal({ type: 'editTask', data });
-
-export const openCreateTaskModal = () =>
-  openModal({ type: 'createTask', data: null });
-
-export const openCreateCategoryModal = () =>
-  openModal({ type: 'createCategory', data: null });
 
 export default uiSlice.reducer;
