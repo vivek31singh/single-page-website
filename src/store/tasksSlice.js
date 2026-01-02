@@ -1,319 +1,323 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 /**
- * Async thunks for task operations
+ * @typedef {Object} Task
+ * @property {string} id - Unique identifier for the task
+ * @property {string} title - Task title
+ * @property {string} description - Task description
+ * @property {'active' | 'completed'} status - Task status
+ * @property {'low' | 'medium' | 'high'} priority - Task priority
+ * @property {string} category - Task category ID
+ * @property {string} dueDate - Due date in ISO format
+ * @property {string} createdAt - Creation date in ISO format
+ * @property {string} updatedAt - Last update date in ISO format
  */
 
-// Fetch all tasks
+/**
+ * @typedef {Object} TasksFilter
+ * @property {string} status - Filter by status ('all', 'active', 'completed')
+ * @property {string} priority - Filter by priority ('all', 'low', 'medium', 'high')
+ * @property {string} category - Filter by category ID ('all' or specific ID)
+ * @property {string} search - Search query string
+ */
+
+/**
+ * @typedef {Object} TasksSort
+ * @property {'dueDate' | 'priority' | 'createdAt' | 'title'} field - Sort field
+ * @property {'asc' | 'desc'} direction - Sort direction
+ */
+
+// Async thunks for API interactions (placeholder for future implementation)
 export const fetchTasks = createAsyncThunk(
   'tasks/fetchTasks',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/tasks');
-      if (!response.ok) {
-        throw new Error('Failed to fetch tasks');
-      }
-      const data = await response.json();
-      return data.data;
+      // In a real app, this would call an API
+      // const response = await api.get('/api/tasks');
+      // return response.data;
+      
+      // For now, return empty array
+      return [];
     } catch (error) {
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Create a new task
 export const createTask = createAsyncThunk(
   'tasks/createTask',
   async (taskData, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(taskData),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create task');
-      }
-      const data = await response.json();
-      return data.data;
+      // In a real app, this would call an API
+      // const response = await api.post('/api/tasks', taskData);
+      // return response.data;
+      
+      const newTask = {
+        id: Date.now().toString(),
+        ...taskData,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return newTask;
     } catch (error) {
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Update an existing task
 export const updateTask = createAsyncThunk(
   'tasks/updateTask',
-  async ({ id, ...taskData }, { rejectWithValue }) => {
+  async ({ id, ...updates }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`/api/tasks/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(taskData),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update task');
-      }
-      const data = await response.json();
-      return data.data;
+      // In a real app, this would call an API
+      // const response = await api.put(`/api/tasks/${id}`, updates);
+      // return response.data;
+      
+      return {
+        id,
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
     } catch (error) {
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Delete a task
 export const deleteTask = createAsyncThunk(
   'tasks/deleteTask',
-  async (taskId, { rejectWithValue }) => {
+  async (id, { rejectWithValue }) => {
     try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete task');
-      }
-      return taskId;
+      // In a real app, this would call an API
+      // await api.delete(`/api/tasks/${id}`);
+      
+      return id;
     } catch (error) {
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Toggle task status
-export const toggleTaskStatus = createAsyncThunk(
-  'tasks/toggleTaskStatus',
-  async (taskId, { getState, rejectWithValue }) => {
-    try {
-      const task = getState().tasks.items.find((t) => t.id === taskId);
-      const newStatus = task.status === 'active' ? 'completed' : 'active';
-      
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update task status');
-      }
-      const data = await response.json();
-      return data.data;
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
+const initialState = {
+  /** @type {Task[]} */
+  items: [],
+  /** @type {TasksFilter} */
+  filter: {
+    status: 'all',
+    priority: 'all',
+    category: 'all',
+    search: '',
+  },
+  /** @type {TasksSort} */
+  sort: {
+    field: 'dueDate',
+    direction: 'asc',
+  },
+  /** @type {boolean} */
+  isLoading: false,
+  /** @type {string | null} */
+  error: null,
+  /** @type {Task | null} */
+  editingTask: null,
+};
 
 const tasksSlice = createSlice({
   name: 'tasks',
-  initialState: {
-    items: [],
-    loading: false,
-    error: null,
-    filter: {
-      status: 'all', // 'all', 'active', 'completed'
-      priority: 'all', // 'all', 'low', 'medium', 'high'
-      category: 'all', // 'all' or category id
-    },
-    sortBy: 'dueDate', // 'dueDate', 'priority', 'createdAt', 'title'
-    sortOrder: 'asc', // 'asc', 'desc'
-    searchQuery: '',
-  },
+  initialState,
   reducers: {
-    // Local state management for filters
-    setStatusFilter: (state, action) => {
-      state.filter.status = action.payload;
+    setFilter: (state, action) => {
+      state.filter = { ...state.filter, ...action.payload };
     },
-    setPriorityFilter: (state, action) => {
-      state.filter.priority = action.payload;
+    resetFilter: (state) => {
+      state.filter = initialState.filter;
     },
-    setCategoryFilter: (state, action) => {
-      state.filter.category = action.payload;
+    setSort: (state, action) => {
+      state.sort = { ...state.sort, ...action.payload };
     },
-    setSortBy: (state, action) => {
-      state.sortBy = action.payload;
+    setEditingTask: (state, action) => {
+      state.editingTask = action.payload;
     },
-    setSortOrder: (state, action) => {
-      state.sortOrder = action.payload;
+    clearEditingTask: (state) => {
+      state.editingTask = null;
     },
-    setSearchQuery: (state, action) => {
-      state.searchQuery = action.payload;
-    },
-    clearFilters: (state) => {
-      state.filter = {
-        status: 'all',
-        priority: 'all',
-        category: 'all',
-      };
-      state.searchQuery = '';
+    toggleTaskStatus: (state, action) => {
+      const task = state.items.find((task) => task.id === action.payload);
+      if (task) {
+        task.status = task.status === 'active' ? 'completed' : 'active';
+        task.updatedAt = new Date().toISOString();
+      }
     },
     clearError: (state) => {
       state.error = null;
+    },
+    // Local storage helpers
+    loadTasksFromStorage: (state) => {
+      try {
+        const storedTasks = localStorage.getItem('tasks');
+        if (storedTasks) {
+          state.items = JSON.parse(storedTasks);
+        }
+      } catch (error) {
+        console.error('Failed to load tasks from storage:', error);
+      }
     },
   },
   extraReducers: (builder) => {
     // Fetch tasks
     builder
       .addCase(fetchTasks.pending, (state) => {
-        state.loading = true;
+        state.isLoading = true;
         state.error = null;
       })
       .addCase(fetchTasks.fulfilled, (state, action) => {
-        state.loading = false;
+        state.isLoading = false;
         state.items = action.payload;
+        // Save to local storage
+        localStorage.setItem('tasks', JSON.stringify(action.payload));
       })
       .addCase(fetchTasks.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.isLoading = false;
+        state.error = action.payload || 'Failed to fetch tasks';
       });
 
     // Create task
     builder
       .addCase(createTask.pending, (state) => {
-        state.loading = true;
+        state.isLoading = true;
         state.error = null;
       })
       .addCase(createTask.fulfilled, (state, action) => {
-        state.loading = false;
+        state.isLoading = false;
         state.items.push(action.payload);
+        // Save to local storage
+        localStorage.setItem('tasks', JSON.stringify(state.items));
       })
       .addCase(createTask.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.isLoading = false;
+        state.error = action.payload || 'Failed to create task';
       });
 
     // Update task
     builder
       .addCase(updateTask.pending, (state) => {
-        state.loading = true;
+        state.isLoading = true;
         state.error = null;
       })
       .addCase(updateTask.fulfilled, (state, action) => {
-        state.loading = false;
-        const index = state.items.findIndex((t) => t.id === action.payload.id);
+        state.isLoading = false;
+        const index = state.items.findIndex(
+          (task) => task.id === action.payload.id
+        );
         if (index !== -1) {
-          state.items[index] = action.payload;
+          state.items[index] = { ...state.items[index], ...action.payload };
         }
+        // Save to local storage
+        localStorage.setItem('tasks', JSON.stringify(state.items));
       })
       .addCase(updateTask.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.isLoading = false;
+        state.error = action.payload || 'Failed to update task';
       });
 
     // Delete task
     builder
       .addCase(deleteTask.pending, (state) => {
-        state.loading = true;
+        state.isLoading = true;
         state.error = null;
       })
       .addCase(deleteTask.fulfilled, (state, action) => {
-        state.loading = false;
-        state.items = state.items.filter((t) => t.id !== action.payload);
+        state.isLoading = false;
+        state.items = state.items.filter((task) => task.id !== action.payload);
+        // Save to local storage
+        localStorage.setItem('tasks', JSON.stringify(state.items));
       })
       .addCase(deleteTask.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
-
-    // Toggle task status
-    builder
-      .addCase(toggleTaskStatus.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(toggleTaskStatus.fulfilled, (state, action) => {
-        state.loading = false;
-        const index = state.items.findIndex((t) => t.id === action.payload.id);
-        if (index !== -1) {
-          state.items[index] = action.payload;
-        }
-      })
-      .addCase(toggleTaskStatus.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.isLoading = false;
+        state.error = action.payload || 'Failed to delete task';
       });
   },
 });
 
 // Selectors
 export const selectAllTasks = (state) => state.tasks.items;
-export const selectTasksLoading = (state) => state.tasks.loading;
-export const selectTasksError = (state) => state.tasks.error;
-export const selectTasksFilter = (state) => state.tasks.filter;
-export const selectTasksSortBy = (state) => state.tasks.sortBy;
-export const selectTasksSortOrder = (state) => state.tasks.sortOrder;
-export const selectSearchQuery = (state) => state.tasks.searchQuery;
 
-// Computed selector for filtered and sorted tasks
 export const selectFilteredTasks = (state) => {
-  let tasks = [...state.tasks.items];
-  const { status, priority, category } = state.tasks.filter;
-  const searchQuery = state.tasks.searchQuery.toLowerCase();
-  const sortBy = state.tasks.sortBy;
-  const sortOrder = state.tasks.sortOrder;
-
+  const { items, filter, sort } = state.tasks;
+  
+  let filtered = [...items];
+  
   // Apply filters
-  if (status !== 'all') {
-    tasks = tasks.filter((t) => t.status === status);
+  if (filter.status !== 'all') {
+    filtered = filtered.filter((task) => task.status === filter.status);
   }
-  if (priority !== 'all') {
-    tasks = tasks.filter((t) => t.priority === priority);
+  if (filter.priority !== 'all') {
+    filtered = filtered.filter((task) => task.priority === filter.priority);
   }
-  if (category !== 'all') {
-    tasks = tasks.filter((t) => t.category === category);
+  if (filter.category !== 'all') {
+    filtered = filtered.filter((task) => task.category === filter.category);
   }
-  if (searchQuery) {
-    tasks = tasks.filter(
-      (t) =>
-        t.title.toLowerCase().includes(searchQuery) ||
-        t.description?.toLowerCase().includes(searchQuery)
+  if (filter.search) {
+    const searchLower = filter.search.toLowerCase();
+    filtered = filtered.filter(
+      (task) =>
+        task.title.toLowerCase().includes(searchLower) ||
+        task.description.toLowerCase().includes(searchLower)
     );
   }
-
+  
   // Apply sorting
-  tasks.sort((a, b) => {
-    let compareValue = 0;
+  filtered.sort((a, b) => {
+    let comparison = 0;
     
-    switch (sortBy) {
+    switch (sort.field) {
       case 'dueDate':
-        compareValue = new Date(a.dueDate) - new Date(b.dueDate);
+        comparison = new Date(a.dueDate) - new Date(b.dueDate);
         break;
       case 'priority':
-        const priorityOrder = { high: 0, medium: 1, low: 2 };
-        compareValue = priorityOrder[a.priority] - priorityOrder[b.priority];
+        const priorityOrder = { low: 0, medium: 1, high: 2 };
+        comparison = priorityOrder[a.priority] - priorityOrder[b.priority];
         break;
       case 'createdAt':
-        compareValue = new Date(a.createdAt) - new Date(b.createdAt);
+        comparison = new Date(a.createdAt) - new Date(b.createdAt);
         break;
       case 'title':
-        compareValue = a.title.localeCompare(b.title);
+        comparison = a.title.localeCompare(b.title);
         break;
       default:
-        return 0;
+        break;
     }
     
-    return sortOrder === 'asc' ? compareValue : -compareValue;
+    return sort.direction === 'desc' ? -comparison : comparison;
   });
-
-  return tasks;
+  
+  return filtered;
 };
 
+export const selectTaskById = (state, taskId) =>
+  state.tasks.items.find((task) => task.id === taskId);
+
+export const selectActiveTasksCount = (state) =>
+  state.tasks.items.filter((task) => task.status === 'active').length;
+
+export const selectCompletedTasksCount = (state) =>
+  state.tasks.items.filter((task) => task.status === 'completed').length;
+
+export const selectTasksFilter = (state) => state.tasks.filter;
+export const selectTasksSort = (state) => state.tasks.sort;
+export const selectTasksLoading = (state) => state.tasks.isLoading;
+export const selectTasksError = (state) => state.tasks.error;
+export const selectEditingTask = (state) => state.tasks.editingTask;
+
 export const {
-  setStatusFilter,
-  setPriorityFilter,
-  setCategoryFilter,
-  setSortBy,
-  setSortOrder,
-  setSearchQuery,
-  clearFilters,
+  setFilter,
+  resetFilter,
+  setSort,
+  setEditingTask,
+  clearEditingTask,
+  toggleTaskStatus,
   clearError,
+  loadTasksFromStorage,
 } = tasksSlice.actions;
 
 export default tasksSlice.reducer;

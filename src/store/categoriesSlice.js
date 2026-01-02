@@ -1,227 +1,242 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 /**
- * Async thunks for category operations
+ * @typedef {Object} Category
+ * @property {string} id - Unique identifier for the category
+ * @property {string} name - Category name
+ * @property {string} color - Category color (hex code)
  */
 
-// Fetch all categories
+// Default categories
+const DEFAULT_CATEGORIES = [
+  { id: 'cat-1', name: 'Work', color: '#3b82f6' },
+  { id: 'cat-2', name: 'Personal', color: '#10b981' },
+  { id: 'cat-3', name: 'Shopping', color: '#f59e0b' },
+  { id: 'cat-4', name: 'Health', color: '#ef4444' },
+  { id: 'cat-5', name: 'Finance', color: '#8b5cf6' },
+  { id: 'cat-6', name: 'Learning', color: '#ec4899' },
+];
+
+// Async thunks for API interactions (placeholder for future implementation)
 export const fetchCategories = createAsyncThunk(
   'categories/fetchCategories',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/categories');
-      if (!response.ok) {
-        throw new Error('Failed to fetch categories');
-      }
-      const data = await response.json();
-      return data.data;
+      // In a real app, this would call an API
+      // const response = await api.get('/api/categories');
+      // return response.data;
+      
+      // For now, return default categories
+      return DEFAULT_CATEGORIES;
     } catch (error) {
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Create a new category
 export const createCategory = createAsyncThunk(
   'categories/createCategory',
   async (categoryData, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/categories', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(categoryData),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create category');
-      }
-      const data = await response.json();
-      return data.data;
+      // In a real app, this would call an API
+      // const response = await api.post('/api/categories', categoryData);
+      // return response.data;
+      
+      const newCategory = {
+        id: `cat-${Date.now()}`,
+        ...categoryData,
+      };
+      return newCategory;
     } catch (error) {
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Update an existing category
 export const updateCategory = createAsyncThunk(
   'categories/updateCategory',
-  async ({ id, ...categoryData }, { rejectWithValue }) => {
+  async ({ id, ...updates }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`/api/categories/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(categoryData),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update category');
-      }
-      const data = await response.json();
-      return data.data;
+      // In a real app, this would call an API
+      // const response = await api.put(`/api/categories/${id}`, updates);
+      // return response.data;
+      
+      return {
+        id,
+        ...updates,
+      };
     } catch (error) {
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Delete a category
 export const deleteCategory = createAsyncThunk(
   'categories/deleteCategory',
-  async (categoryId, { rejectWithValue }) => {
+  async (id, { rejectWithValue }) => {
     try {
-      const response = await fetch(`/api/categories/${categoryId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete category');
-      }
-      return categoryId;
+      // In a real app, this would call an API
+      // await api.delete(`/api/categories/${id}`);
+      
+      return id;
     } catch (error) {
       return rejectWithValue(error.message);
     }
   }
 );
+
+const initialState = {
+  /** @type {Category[]} */
+  items: DEFAULT_CATEGORIES,
+  /** @type {boolean} */
+  isLoading: false,
+  /** @type {string | null} */
+  error: null,
+};
 
 const categoriesSlice = createSlice({
   name: 'categories',
-  initialState: {
-    items: [
-      // Default categories
-      {
-        id: 'work',
-        name: 'Work',
-        color: '#1976d2',
-      },
-      {
-        id: 'personal',
-        name: 'Personal',
-        color: '#388e3c',
-      },
-      {
-        id: 'shopping',
-        name: 'Shopping',
-        color: '#f57c00',
-      },
-      {
-        id: 'health',
-        name: 'Health',
-        color: '#d32f2f',
-      },
-    ],
-    loading: false,
-    error: null,
-  },
+  initialState,
   reducers: {
     clearError: (state) => {
       state.error = null;
     },
-    // Local action to add category without API (for offline mode)
-    addCategoryLocal: (state, action) => {
+    // Local storage helpers
+    loadCategoriesFromStorage: (state) => {
+      try {
+        const storedCategories = localStorage.getItem('categories');
+        if (storedCategories) {
+          state.items = JSON.parse(storedCategories);
+        }
+      } catch (error) {
+        console.error('Failed to load categories from storage:', error);
+      }
+    },
+    // Synchronous category actions (for optimistic updates)
+    addCategoryOptimistic: (state, action) => {
       state.items.push(action.payload);
     },
-    // Local action to update category without API
-    updateCategoryLocal: (state, action) => {
-      const index = state.items.findIndex((c) => c.id === action.payload.id);
+    updateCategoryOptimistic: (state, action) => {
+      const index = state.items.findIndex(
+        (category) => category.id === action.payload.id
+      );
       if (index !== -1) {
         state.items[index] = { ...state.items[index], ...action.payload };
       }
     },
-    // Local action to delete category without API
-    deleteCategoryLocal: (state, action) => {
-      state.items = state.items.filter((c) => c.id !== action.payload);
+    removeCategoryOptimistic: (state, action) => {
+      state.items = state.items.filter(
+        (category) => category.id !== action.payload
+      );
     },
   },
   extraReducers: (builder) => {
     // Fetch categories
     builder
       .addCase(fetchCategories.pending, (state) => {
-        state.loading = true;
+        state.isLoading = true;
         state.error = null;
       })
       .addCase(fetchCategories.fulfilled, (state, action) => {
-        state.loading = false;
+        state.isLoading = false;
         state.items = action.payload;
+        // Save to local storage
+        localStorage.setItem('categories', JSON.stringify(action.payload));
       })
       .addCase(fetchCategories.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.isLoading = false;
+        state.error = action.payload || 'Failed to fetch categories';
       });
 
     // Create category
     builder
       .addCase(createCategory.pending, (state) => {
-        state.loading = true;
+        state.isLoading = true;
         state.error = null;
       })
       .addCase(createCategory.fulfilled, (state, action) => {
-        state.loading = false;
+        state.isLoading = false;
         state.items.push(action.payload);
+        // Save to local storage
+        localStorage.setItem('categories', JSON.stringify(state.items));
       })
       .addCase(createCategory.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.isLoading = false;
+        state.error = action.payload || 'Failed to create category';
       });
 
     // Update category
     builder
       .addCase(updateCategory.pending, (state) => {
-        state.loading = true;
+        state.isLoading = true;
         state.error = null;
       })
       .addCase(updateCategory.fulfilled, (state, action) => {
-        state.loading = false;
-        const index = state.items.findIndex((c) => c.id === action.payload.id);
+        state.isLoading = false;
+        const index = state.items.findIndex(
+          (category) => category.id === action.payload.id
+        );
         if (index !== -1) {
-          state.items[index] = action.payload;
+          state.items[index] = { ...state.items[index], ...action.payload };
         }
+        // Save to local storage
+        localStorage.setItem('categories', JSON.stringify(state.items));
       })
       .addCase(updateCategory.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.isLoading = false;
+        state.error = action.payload || 'Failed to update category';
       });
 
     // Delete category
     builder
       .addCase(deleteCategory.pending, (state) => {
-        state.loading = true;
+        state.isLoading = true;
         state.error = null;
       })
       .addCase(deleteCategory.fulfilled, (state, action) => {
-        state.loading = false;
-        state.items = state.items.filter((c) => c.id !== action.payload);
+        state.isLoading = false;
+        state.items = state.items.filter(
+          (category) => category.id !== action.payload
+        );
+        // Save to local storage
+        localStorage.setItem('categories', JSON.stringify(state.items));
       })
       .addCase(deleteCategory.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.isLoading = false;
+        state.error = action.payload || 'Failed to delete category';
       });
   },
 });
 
 // Selectors
 export const selectAllCategories = (state) => state.categories.items;
-export const selectCategoriesLoading = (state) => state.categories.loading;
+export const selectCategoryById = (state, categoryId) =>
+  state.categories.items.find((category) => category.id === categoryId);
+export const selectCategoriesLoading = (state) => state.categories.isLoading;
 export const selectCategoriesError = (state) => state.categories.error;
 
-// Get category by id
-export const selectCategoryById = (state, categoryId) =>
-  state.categories.items.find((c) => c.id === categoryId);
+// Helper selector to get category name by ID
+export const selectCategoryNameById = (state, categoryId) => {
+  const category = state.categories.items.find(
+    (cat) => cat.id === categoryId
+  );
+  return category ? category.name : 'Uncategorized';
+};
 
-// Get categories as options for select fields
-export const selectCategoryOptions = (state) =>
-  state.categories.items.map((c) => ({
-    value: c.id,
-    label: c.name,
-    color: c.color,
-  }));
+// Helper selector to get category color by ID
+export const selectCategoryColorById = (state, categoryId) => {
+  const category = state.categories.items.find(
+    (cat) => cat.id === categoryId
+  );
+  return category ? category.color : '#6b7280';
+};
 
 export const {
   clearError,
-  addCategoryLocal,
-  updateCategoryLocal,
-  deleteCategoryLocal,
+  loadCategoriesFromStorage,
+  addCategoryOptimistic,
+  updateCategoryOptimistic,
+  removeCategoryOptimistic,
 } = categoriesSlice.actions;
 
 export default categoriesSlice.reducer;

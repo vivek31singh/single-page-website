@@ -11,100 +11,53 @@ import { createSlice } from '@reduxjs/toolkit';
 /**
  * @typedef {Object} Modal
  * @property {string} type - Modal type identifier
- * @property {boolean} isOpen - Whether the modal is currently open
- * @property {Object} data - Additional data passed to the modal
+ * @property {boolean} isOpen - Whether the modal is open
+ * @property {any} data - Additional data for the modal
  */
+
+const initialState = {
+  /** @type {Notification[]} */
+  notifications: [],
+  /** @type {Modal} */
+  modal: {
+    type: null,
+    isOpen: false,
+    data: null,
+  },
+  /** @type {Record<string, boolean>} */
+  isLoading: {
+    global: false,
+    tasks: false,
+    categories: false,
+  },
+  /** @type {boolean} */
+  isSidebarOpen: true,
+  /** @type {string} */
+  theme: 'light',
+};
 
 const uiSlice = createSlice({
   name: 'ui',
-  initialState: {
-    // Notifications state
-    notifications: [],
-    
-    // Modal state
-    modal: {
-      type: null,
-      isOpen: false,
-      data: null,
-    },
-    
-    // Global loading state
-    isLoading: false,
-    loadingMessage: '',
-    
-    // Theme state (for potential dark mode)
-    theme: 'light',
-    
-    // Sidebar state for mobile responsiveness
-    isSidebarOpen: true,
-    
-    // Confirmation dialog state
-    confirmation: {
-      isOpen: false,
-      title: '',
-      message: '',
-      onConfirm: null,
-      onCancel: null,
-    },
-  },
+  initialState,
   reducers: {
     // Notification actions
-    addNotification: (state, action) => {
+    showNotification: (state, action) => {
       const notification = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        type: 'info',
+        id: `notification-${Date.now()}-${Math.random()}`,
         duration: 5000,
         ...action.payload,
       };
       state.notifications.push(notification);
     },
-    removeNotification: (state, action) => {
+    hideNotification: (state, action) => {
       state.notifications = state.notifications.filter(
-        (n) => n.id !== action.payload
+        (notification) => notification.id !== action.payload
       );
     },
     clearNotifications: (state) => {
       state.notifications = [];
     },
-    
-    // Convenience actions for specific notification types
-    showSuccess: (state, action) => {
-      const notification = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        type: 'success',
-        message: action.payload,
-        duration: 3000,
-      };
-      state.notifications.push(notification);
-    },
-    showError: (state, action) => {
-      const notification = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        type: 'error',
-        message: action.payload,
-        duration: 5000,
-      };
-      state.notifications.push(notification);
-    },
-    showWarning: (state, action) => {
-      const notification = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        type: 'warning',
-        message: action.payload,
-        duration: 4000,
-      };
-      state.notifications.push(notification);
-    },
-    showInfo: (state, action) => {
-      const notification = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        type: 'info',
-        message: action.payload,
-        duration: 3000,
-      };
-      state.notifications.push(notification);
-    },
-    
+
     // Modal actions
     openModal: (state, action) => {
       state.modal = {
@@ -120,29 +73,16 @@ const uiSlice = createSlice({
         data: null,
       };
     },
-    
-    // Loading actions
+
+    // Loading state actions
     setLoading: (state, action) => {
-      state.isLoading = action.payload;
-      state.loadingMessage = '';
+      const { key, value } = action.payload;
+      state.isLoading[key] = value;
     },
-    setLoadingWithMessage: (state, action) => {
-      state.isLoading = true;
-      state.loadingMessage = action.payload;
+    setGlobalLoading: (state, action) => {
+      state.isLoading.global = action.payload;
     },
-    clearLoading: (state) => {
-      state.isLoading = false;
-      state.loadingMessage = '';
-    },
-    
-    // Theme actions
-    setTheme: (state, action) => {
-      state.theme = action.payload;
-    },
-    toggleTheme: (state) => {
-      state.theme = state.theme === 'light' ? 'dark' : 'light';
-    },
-    
+
     // Sidebar actions
     toggleSidebar: (state) => {
       state.isSidebarOpen = !state.isSidebarOpen;
@@ -150,25 +90,22 @@ const uiSlice = createSlice({
     setSidebarOpen: (state, action) => {
       state.isSidebarOpen = action.payload;
     },
-    
-    // Confirmation dialog actions
-    showConfirmation: (state, action) => {
-      state.confirmation = {
-        isOpen: true,
-        title: action.payload.title || 'Confirm',
-        message: action.payload.message || 'Are you sure?',
-        onConfirm: action.payload.onConfirm || null,
-        onCancel: action.payload.onCancel || null,
-      };
+
+    // Theme actions
+    toggleTheme: (state) => {
+      state.theme = state.theme === 'light' ? 'dark' : 'light';
+      // Persist theme to localStorage
+      localStorage.setItem('theme', state.theme);
     },
-    hideConfirmation: (state) => {
-      state.confirmation = {
-        isOpen: false,
-        title: '',
-        message: '',
-        onConfirm: null,
-        onCancel: null,
-      };
+    setTheme: (state, action) => {
+      state.theme = action.payload;
+      localStorage.setItem('theme', action.payload);
+    },
+    loadThemeFromStorage: (state) => {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
+        state.theme = savedTheme;
+      }
     },
   },
 });
@@ -176,37 +113,35 @@ const uiSlice = createSlice({
 // Selectors
 export const selectNotifications = (state) => state.ui.notifications;
 export const selectModal = (state) => state.ui.modal;
-export const selectIsLoading = (state) => state.ui.isLoading;
-export const selectLoadingMessage = (state) => state.ui.loadingMessage;
-export const selectTheme = (state) => state.ui.theme;
-export const selectIsSidebarOpen = (state) => state.ui.isSidebarOpen;
-export const selectConfirmation = (state) => state.ui.confirmation;
-
-// Check if any modal is open
 export const selectIsModalOpen = (state) => state.ui.modal.isOpen;
+export const selectModalType = (state) => state.ui.modal.type;
+export const selectModalData = (state) => state.ui.modal.data;
+export const selectLoading = (state, key) => state.ui.isLoading[key] || false;
+export const selectGlobalLoading = (state) => state.ui.isLoading.global;
+export const selectIsSidebarOpen = (state) => state.ui.isSidebarOpen;
+export const selectTheme = (state) => state.ui.theme;
 
-// Check if confirmation dialog is open
-export const selectIsConfirmationOpen = (state) => state.ui.confirmation.isOpen;
+// Helper selectors for common loading states
+export const selectTasksLoading = (state) => state.ui.isLoading.tasks;
+export const selectCategoriesLoading = (state) => state.ui.isLoading.categories;
+
+// Helper selector to check if any loading state is active
+export const selectIsAnyLoading = (state) =>
+  Object.values(state.ui.isLoading).some((loading) => loading);
 
 export const {
-  addNotification,
-  removeNotification,
+  showNotification,
+  hideNotification,
   clearNotifications,
-  showSuccess,
-  showError,
-  showWarning,
-  showInfo,
   openModal,
   closeModal,
   setLoading,
-  setLoadingWithMessage,
-  clearLoading,
-  setTheme,
-  toggleTheme,
+  setGlobalLoading,
   toggleSidebar,
   setSidebarOpen,
-  showConfirmation,
-  hideConfirmation,
+  toggleTheme,
+  setTheme,
+  loadThemeFromStorage,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;
