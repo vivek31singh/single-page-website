@@ -1,7 +1,8 @@
 {
   "repository": "vivek31singh/single-page-website",
   "completed_features": [
-    "Initialize the project using Vite with the React template to create the basic application scaffolding and package.json file."
+    "Initialize the project using Vite with the React template to create the basic application scaffolding and package.json file.",
+    "Implement the core Redux store configuration and create the initial Redux slices (tasksSlice, categoriesSlice, uiSlice) in the `src/store/` directory."
   ],
-  "last_commit": "feat: initialize Vite React project with basic scaffolding\n\nSet up project structure with Vite and React template including:\n- package.json with all required dependencies (React 18+, Redux Toolkit, React Router, Material-UI, Axios, testing libraries)\n- Vite configuration with path aliases\n- Basic app structure (main.jsx, App.jsx, router.jsx)\n- Redux store with tasks, categories, and UI slices\n- Layout components (Header, Sidebar)\n- Placeholder pages (Dashboard, TaskManager, Settings)\n- Configuration files (.eslintrc, .prettierrc, jest.config)\n- Basic styling (index.css, global.css, variables.css)"
+  "last_commit": "feat: implement Redux store slices for tasks, categories, and UI state\n\nCreate three Redux slices following Redux Toolkit patterns:\n- tasksSlice: Manage tasks with CRUD operations, filtering, sorting, and search\n- categoriesSlice: Manage categories with predefined default categories\n- uiSlice: Manage UI state including sidebar, modals, notifications, and theme"
 }
