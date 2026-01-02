@@ -1,4 +1,5 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import * as categoryService from '../services/categoryService';
 
 /**
  * @typedef {Object} Category
@@ -17,98 +18,203 @@ import { createSlice } from '@reduxjs/toolkit';
 /** @type {CategoriesState} */
 const initialState = {
   items: [
-    { id: 'cat_1', name: 'Work', color: '#2196F3' },
-    { id: 'cat_2', name: 'Personal', color: '#4CAF50' },
-    { id: 'cat_3', name: 'Shopping', color: '#FF9800' },
-    { id: 'cat_4', name: 'Health', color: '#F44336' },
-    { id: 'cat_5', name: 'Finance', color: '#9C27B0' },
+    {
+      id: '1',
+      name: 'Work',
+      color: '#1976d2',
+    },
+    {
+      id: '2',
+      name: 'Personal',
+      color: '#4caf50',
+    },
+    {
+      id: '3',
+      name: 'Shopping',
+      color: '#ff9800',
+    },
+    {
+      id: '4',
+      name: 'Health',
+      color: '#f44336',
+    },
   ],
   isLoading: false,
   error: null,
 };
 
-/**
- * Generate a unique ID for new categories
- * @returns {string} Unique identifier
- */
-const generateId = () => {
-  return 'cat_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
-};
+// Async Thunks
+export const fetchCategories = createAsyncThunk(
+  'categories/fetchCategories',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await categoryService.getAllCategories();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to fetch categories'
+      );
+    }
+  }
+);
 
+export const createCategory = createAsyncThunk(
+  'categories/createCategory',
+  async (categoryData, { rejectWithValue }) => {
+    try {
+      const response = await categoryService.createCategory(categoryData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to create category'
+      );
+    }
+  }
+);
+
+export const updateCategory = createAsyncThunk(
+  'categories/updateCategory',
+  async ({ id, categoryData }, { rejectWithValue }) => {
+    try {
+      const response = await categoryService.updateCategory(id, categoryData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to update category'
+      );
+    }
+  }
+);
+
+export const deleteCategory = createAsyncThunk(
+  'categories/deleteCategory',
+  async (categoryId, { rejectWithValue }) => {
+    try {
+      await categoryService.deleteCategory(categoryId);
+      return categoryId;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to delete category'
+      );
+    }
+  }
+);
+
+// Slice
 const categoriesSlice = createSlice({
   name: 'categories',
   initialState,
   reducers: {
-    // Load categories from local storage
-    loadCategories: (state, action) => {
-      state.items = action.payload;
-    },
-
-    // Add a new category
-    addCategory: (state, action) => {
-      const newCategory = {
-        id: generateId(),
-        ...action.payload,
-      };
-      state.items.push(newCategory);
-    },
-
-    // Update an existing category
-    updateCategory: (state, action) => {
-      const { id, ...updates } = action.payload;
-      const index = state.items.findIndex((cat) => cat.id === id);
-      if (index !== -1) {
-        state.items[index] = {
-          ...state.items[index],
-          ...updates,
-        };
-      }
-    },
-
-    // Delete a category
-    deleteCategory: (state, action) => {
-      state.items = state.items.filter((cat) => cat.id !== action.payload);
-    },
-
-    // Set loading state
-    setLoading: (state, action) => {
-      state.isLoading = action.payload;
-    },
-
-    // Set error state
-    setError: (state, action) => {
-      state.error = action.payload;
-    },
-
-    // Clear error state
     clearError: (state) => {
       state.error = null;
     },
+    addCategory: (state, action) => {
+      state.items.push(action.payload);
+    },
+    removeCategory: (state, action) => {
+      state.items = state.items.filter(
+        (category) => category.id !== action.payload
+      );
+    },
+    updateCategoryState: (state, action) => {
+      const index = state.items.findIndex(
+        (category) => category.id === action.payload.id
+      );
+      if (index !== -1) {
+        state.items[index] = action.payload;
+      }
+    },
+  },
+  extraReducers: (builder) => {
+    // Fetch categories
+    builder
+      .addCase(fetchCategories.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchCategories.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.items = action.payload;
+      })
+      .addCase(fetchCategories.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      });
+
+    // Create category
+    builder
+      .addCase(createCategory.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(createCategory.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.items.push(action.payload);
+      })
+      .addCase(createCategory.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      });
+
+    // Update category
+    builder
+      .addCase(updateCategory.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateCategory.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const index = state.items.findIndex(
+          (category) => category.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+      })
+      .addCase(updateCategory.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      });
+
+    // Delete category
+    builder
+      .addCase(deleteCategory.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteCategory.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.items = state.items.filter(
+          (category) => category.id !== action.payload
+        );
+      })
+      .addCase(deleteCategory.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      });
   },
 });
 
-export const {
-  loadCategories,
-  addCategory,
-  updateCategory,
-  deleteCategory,
-  setLoading,
-  setError,
-  clearError,
-} = categoriesSlice.actions;
+// Selectors
+export const selectAllCategories = (state) => state.categories.items;
+export const selectCategoriesLoading = (state) => state.categories.isLoading;
+export const selectCategoriesError = (state) => state.categories.error;
+export const selectCategoryById = (state, categoryId) =>
+  state.categories.items.find((category) => category.id === categoryId);
 
-/**
- * Selector to get category by ID
- */
-export const selectCategoryById = (state, categoryId) => {
-  return state.categories.items.find((cat) => cat.id === categoryId);
-};
+export const selectCategoryByName = (state, categoryName) =>
+  state.categories.items.find(
+    (category) => category.name.toLowerCase() === categoryName.toLowerCase()
+  );
 
-/**
- * Selector to get category names array
- */
-export const selectCategoryNames = (state) => {
-  return state.categories.items.map((cat) => cat.name);
-};
+export const selectCategoryColors = (state) =>
+  state.categories.items.reduce((acc, category) => {
+    acc[category.id] = category.color;
+    return acc;
+  }, {});
+
+// Actions
+export const { clearError, addCategory, removeCategory, updateCategoryState } =
+  categoriesSlice.actions;
 
 export default categoriesSlice.reducer;
