@@ -2,7 +2,8 @@
   "repository": "vivek31singh/single-page-website",
   "completed_features": [
     "Initialize the project using Vite with the React template to create the basic application scaffolding and package.json file.",
-    "Implement the core Redux store configuration and create the initial Redux slices (tasksSlice, categoriesSlice, uiSlice) in the `src/store/` directory."
+    "Implement the core Redux store configuration and create the initial Redux slices (tasksSlice, categoriesSlice, uiSlice) in the `src/store/` directory.",
+    "Create the `TaskList` and `TaskItem` components in the `src/components/tasks/` directory. The `TaskList` component will act as a container for tasks, and `TaskItem` will display individual task details (title, description, status, priority, etc.) using Material-UI components, adhering to the defined Component Hierarchy."
   ],
-  "last_commit": "feat: implement Redux store slices for tasks, categories, and UI state\n\nCreate three Redux slices following Redux Toolkit patterns:\n- tasksSlice: Manage tasks with CRUD operations, filtering, sorting, and search\n- categoriesSlice: Manage categories with predefined default categories\n- uiSlice: Manage UI state including sidebar, modals, notifications, and theme"
+  "last_commit": "feat: create TaskList and TaskItem components with Material-UI\n\nImplement TaskList container component and TaskItem display component following the defined Component Hierarchy. Components include:\n- TaskList: Container with grid layout, empty state, and loading state handling\n- TaskItem: Card-based task display with title, description, priority/status chips, and action buttons\n- PropTypes validation for type safety\n- Responsive grid layout for different screen sizes\n- Visual feedback for completed tasks\n- Test files for both components using React Testing Library"
 }
